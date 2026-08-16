@@ -1,0 +1,42 @@
+.post-container {
+	background-color: rgb(255, 255, 255);
+	display: flex;
+	padding: 20px 14px 20px 14px;
+	margin: 0px 0px 24px 0px;
+	border: 1px solid rgb(194, 194, 194);
+	border-radius: 10px;
+}
+
+.profile-picture {
+	height: 40px;
+	width: 40px;
+	margin-right: 15px;
+	border-radius: 20px;
+}
+
+.content-container {
+	display: flex;
+	gap: 10px;
+}
+
+.content-container h2 {
+	margin: 0;
+	padding-bottom: 10px;
+}
+
+.content-container p {
+	padding-bottom: 10px;
+}
+
+.content-container a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.line {
+	border: none;
+	height: 1px;
+	background-color: black;
+	margin: 8px 0;
+}
+

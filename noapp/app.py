@@ -13,24 +13,27 @@ class App:
             return func
         return decorator
 
+    def url_for(self, name: str, **kwargs):
+        # breakpoint()
+        # (Pdb) n;; l;; pp locals()
+        for (method, path), handler in self.routes.items():
+            if handler.__name__ == name:
+                for key, value in kwargs.items():
+                    path = path.replace(
+                        "{" + key + "}",
+                        str(value),
+                    )
+                return path
+        raise KeyError(f"Route not found: {name}")
+
     async def handle_client(self, reader, writer):
         # PULL CLIENT ADDRESS
         address = writer.get_extra_info("peername")
         self.logger.info("Connection from %s", address)
 
-        # PULL FIRST REQUEST LINE
-        request_line = await reader.readline()
-        method, path, version = request_line.decode().strip().split()
+        # PARSE REQUEST
+        method, path, version, headers, body = await self._parse_request(reader)
         self.logger.info("%s %s %s", method, path, version)
-
-        # PULL REQUEST HEADERS
-        headers = {}
-        while True:
-            line = await reader.readline()
-            if line == b"\r\n":
-                break
-            name, value = line.decode().split(":", 1)
-            headers[name.strip()] = value.strip()
         self.logger.info("Headers: %s", headers)
 
         # HANDLE REQUEST
@@ -59,6 +62,31 @@ class App:
         writer.close()
         await writer.wait_closed()
         self.logger.info("Connection closed: %s", address)
+
+    async def _parse_request(self, reader):
+        # PULL HEADER DATA AND SPLIT LINES
+        header_data = await reader.readuntil(b"\r\n\r\n")
+        lines = header_data.decode().split("\r\n")
+        # PULL FIRST REQUEST LINE
+        request_line = lines[0]
+        method, path, version = request_line.split(" ", 2)
+
+        # PULL REQUEST HEADERS
+        headers = {}
+        for line in lines[1:]:
+            if not line:
+                continue
+            key, value = line.split(":", 1)
+            headers[key.strip()] = value.strip()
+
+        # PULL REQUEST BODY
+        body = b""
+        content_length = int(headers.get("Content-Length", 0))
+        if content_length:
+            body = await reader.readexactly(content_lenght)
+
+        return method, path, version, headers, body
+
 
     async def create_server(self, host: str, port: int):
         return await asyncio.start_server(self.handle_client, host, port)

@@ -1,9 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
+		<meta charset="utf-8">
+		<meta name-"viewport" content="width=device-width, internal-scale=1">
 		<title>{{ title }}</title>
+
+		<link rel="stylesheet" href="/static/css/header.css">
+		<link rel="stylesheet" href="/static/css/general.css">
+		<link rel="stylesheet" href="/static/css/sidebar.css">
+		<link rel="stylesheet" href="/static/css/posts.css">
 	</head>
 	<body>
-		<h1>{{ heading }}</h1>
+		<!-- HEADER -->
+		<div class="header">
+			<div class="left-section">
+				<button class="menu-button">
+					<img class="menu-icon" src="/static/icons/stacks_dark.svg">
+				</button>
+				<a href="{{ url_for('home') }}"></a>
+			</div>
+			<div class="middle-section">
+				<input class="search-bar" type="text" placeholder="Search">
+			</div>
+			<div class="right-section">
+				<span></span>
+				<button class="sign-in-button">
+					<img class="sign-in-icon" src="/static/icons/elderly_dark.svg">
+					<span>Sign In</span>
+				</button>
+				<a href="{{ url_for('home') }}"></a>
+			</div>
+		</div>
+
+		<!-- SIDEBAR -->
+		<nav class="sidebar">
+			<div class="sidebar-link">
+				<img src="/static/icons/folder_dar.svg">
+				<div>Folders</div>
+			</div>
+			<div class="sidebar-link">
+				<img src="/static/icons/calendar_month_dark.svg">
+				<div>Calendar</div>
+			</div>
+			<div class="sidebar-link">
+				<img src="/static/icons/account_circle_dark.svg">
+				<div>You</div>
+			</div>
+		</nav>
+
+		<!-- CONTENT -->
+		{% block content %}
+		{% endblock content %}
 	</body>
 </html>
