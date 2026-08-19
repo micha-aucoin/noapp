@@ -6,6 +6,7 @@ from datetime import datetime
 class Author:
     id: int
     username: str
+    image_path: str | None = None
 
 @dataclass
 class Post:

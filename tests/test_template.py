@@ -44,7 +44,7 @@ class TestTokenizer(unittest.TestCase):
 
 
 class TestParser(unittest.TestCase):
-    def test_01_parse_variable(self):
+    def test_parse_variable(self):
         nodes = parser(tokenizer("{{ hello.world }}"))
         self.assertEqual(len(nodes), 1)
         self.assertIsInstance(nodes[0], VariableNode)
@@ -267,8 +267,8 @@ class TestTemplate(unittest.TestCase):
         template = Template(directory=template_dir)
 
         posts = [
-            Post(id=12, author=Author(id=7, username="JohnDoe"), title="First Post", content="Hello World", date_posted="1999-12-31"),
-            Post(id=13, author=Author(id=8, username="JaneDoe"), title="Second Post", content="Another post", date_posted="2000-01-01"),
+            Post(id=12, author=Author(id=7, username="JohnDoe", image_path="/tmp"), title="First Post", content="Hello World", date_posted="1999-12-31"),
+            Post(id=13, author=Author(id=8, username="JaneDoe", image_path="/tmp"), title="Second Post", content="Another post", date_posted="2000-01-01"),
         ]
 
         def url_for(name, **kwargs):

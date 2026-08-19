@@ -3,9 +3,9 @@
 
 	{% for post in posts %}
 	<div class="post-container">
-		<img class="" src="">
-		<div class="">
-			<div class="">
+		<img class="profile-picture" src="{{ post.author.image_path }}">
+		<div class="content-container">
+			<div class="author-container">
 				<a href="{{ url_for('user_post_page', user_id=post.author.id) }}">
 					{{ post.author.username }}
 				</a>

@@ -16,6 +16,12 @@
 
 .content-container {
 	display: flex;
+	flex-direction: column;
+	flex: 1;
+}
+
+.author-container {
+	display: flex;
 	gap: 10px;
 }
 

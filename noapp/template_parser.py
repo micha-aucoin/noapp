@@ -63,10 +63,8 @@ def parser(tokens):
         token = tokens[index]
         match token.kind:
 
-
             case TokenKind.TEXT:
                 nodes.append(TextNode(value=token.value))
-
 
             case TokenKind.VARIABLE:
                 expression = token.value
@@ -80,7 +78,6 @@ def parser(tokens):
                         nodes.append(MethodCallNode(object_expression, method_name, args))
                 else:
                     nodes.append(VariableNode(expression=expression))
-
 
             case TokenKind.BLOCK:
                 parts = token.value.split()
@@ -162,7 +159,6 @@ def render_nodes(nodes: list, context: dict):
                     continue
                 if "=" in arg:
                     key, value = arg.split("=", 1)
-                    parts = value.split(".")
                     kwargs[key.strip()] = resolve(expression=value, context=context)
                 else:
                     pargs.append(arg.strip("'\""))
@@ -174,6 +170,7 @@ def render_nodes(nodes: list, context: dict):
             # (Pdb) n;; l;; pp locals()
             items = resolve(expression=node.iterable_name, context=context)
             for item in items:
+                # loop_context = {} <- this fails tests
                 loop_context = context.copy()
                 # add the current item to loop_context dict
                 # VariableNode will get an updated item on each iteraction
