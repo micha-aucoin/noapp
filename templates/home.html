@@ -1,26 +1,23 @@
 {% extends 'layout.html' %}
 {% block content %}
-
 	{% for post in posts %}
-	<div class="post-container">
-		<img class="profile-picture" src="{{ post.author.image_path }}">
-		<div class="content-container">
-			<div class="author-container">
-				<a href="{{ url_for('user_post_page', user_id=post.author.id) }}">
-					{{ post.author.username }}
-				</a>
-				<p>{{ post.date_posted.strftime("%B %d, %Y") }}</p>
+		<div class="post-container">
+			<img class="profile-picture" src="{{ post.author.image_path }}">
+			<div class="content-container">
+				<div class="author-container">
+					<a href="{{ url_for('user_post_page', user_id=post.author.id) }}">
+						{{ post.author.username }}
+					</a>
+					<p>{{ post.date_posted.strftime("%B %d, %Y") }}</p>
+				</div>
+				<hr class="line">
+				<h2>
+					<a href="{{ url_for('post_page', post_id=post.id) }}">
+						{{ post.title }}
+					</a>
+				</h2>
+				<p>{{ post.content }}</p>
 			</div>
-			<hr class="line">
-			<h2>
-				<a href="{{ url_for('post_page', post_id=post.id) }}">
-					{{ post.title }}
-				</a>
-			</h2>
-			<p>{{ post.content }}</p>
 		</div>
-	</div>
 	{% endfor %}
-
 {% endblock content %}
-

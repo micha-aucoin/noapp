@@ -6,12 +6,25 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 
+class Request:
+    def __init__(self):
+        self.method = ""
+        self.path = ""
+        self.version = ""
+        self.headers = {}
+        self.body = b""
+
+class Response:
+    def __init__(self):
+        self.status = ""
+        self.content_type = ""
+        self.body = b""
+
 class App:
     def __init__(self):
         self.routes = {}
         self.route_names = {}
-        self.static_dir = BASE_DIR / "static"
-        self.media_dir = BASE_DIR / "media"
+        self.file_mounts = {}
         self.logger = logging.getLogger(__name__)
 
     def get(self, path: str):
@@ -30,123 +43,136 @@ class App:
         path = self.route_names[name]
         return path.format(**kwargs)
 
+    def mount(self, path: str, directory: Path):
+        self.file_mounts[path] = directory
+
     async def handle_client(self, reader, writer):
-        # PULL CLIENT ADDRESS
         address = writer.get_extra_info("peername")
-        self.logger.info("Connection from %s", address)
-
         try:
-            # PARSE REQUEST
-            method, path, version, headers, body = await self._parse_request(reader)
-            self.logger.info("%s %s %s", method, path, version)
-            self.logger.info("Headers: %s", headers)
-            content_type = "text/html"
+            try:
+                request = await self._parse_request(reader)
+            except asyncio.IncompleteReadError:
+                return
 
-            # STATIC FILES
-            if path.startswith("/static/"):
-                file_path = self.static_dir / path.removeprefix("/static/")
-            elif path.startswith("/media/"):
-                file_path = self.static_dir / path.removeprefix("/media/")
+            if request.path.startswith(tuple(self.file_mounts)):
+                response = self._get_file_response(request.path)
             else:
-                file_path = None
+                response = await self._get_route_response(request)
 
-            if file_path is not None:
-                print("STATIC PATH:", file_path)
-                print("EXISTS:", file_path.exists())
-                print("FILE PATH:", file_path)
-                print("EXISTS:", file_path.exists())
-                if file_path.exists() and file_path.is_file():
-                    body = file_path.read_bytes()
-                    status = "200 OK"
-                    if file_path.suffix == ".css":
-                        content_type = "text/css"
-                    elif file_path.suffix == ".svg":
-                        content_type = "image/svg+xml"
-                    elif file_path.suffix in (".jpg", ".jpeg", ".png"):
-                        content_type = "image/png"
-                    else:
-                        content_type = "application/octet-stream"
-                else:
-                    body = b"404 Not Found"
-                    status = "404 Not Found"
-                    content_type = "text/plain"
-                self.logger.info("%s -> %s %s", path, status, content_type)
-            else:
-                # HANDLE REQUEST
-                handler, kwargs = self._get_handler(request_method=method, request_path=path)
-                if handler is None:
-                    body = b"404 Not Found"
-                    status = "404 Not Found"
-                    self.logger.info("%s %s -> 404", method, path)
-                else:
-                    try:
-                        result = await handler(**kwargs)
-                        body = result.encode()
-                        status = "200 OK"
-                    except Exception:
-                        self.logger.exception("Handler failed")
-                        body = b"500 Internal Server Error"
-                        status = "500 Internal Server Error"
+            self.logger.debug("Connection from %s", address)
+            self.logger.debug("Headers: %s", request.headers)
+            self.logger.info(
+                "%s %s -> %s %s %s bytes",
+                request.method,
+                request.path,
+                response.status,
+                response.content_type,
+                len(response.body),
+            )
 
-            # SEND RESPONSE
-            response = (
-                f"HTTP/1.1 {status}\r\n"
-                f"Content-Type: {content_type}\r\n"
-                f"Content-Length: {len(body)}\r\n"
+            response_message = (
+                f"HTTP/1.1 {response.status}\r\n"
+                f"Content-Type: {response.content_type}\r\n"
+                f"Content-Length: {len(response.body)}\r\n"
                 "Connection: close\r\n"
                 "\r\n"
-            ).encode() + body
-            writer.write(response)
+            ).encode() + response.body
+            writer.write(response_message)
             await writer.drain()
 
         finally:
-            # CLOSE CONNECTION
             writer.close()
             await writer.wait_closed()
-            self.logger.info("Connection closed: %s", address)
+            self.logger.debug("Connection closed: %s", address)
 
-    async def _parse_request(self, reader):
+    async def _parse_request(self, reader) -> Request:
+        request = Request()
         # PULL HEADER DATA AND SPLIT LINES
         header_data = await reader.readuntil(b"\r\n\r\n")
         lines = header_data.decode().split("\r\n")
         # PULL FIRST REQUEST LINE
-        request_line = lines[0]
-        method, path, version = request_line.split(" ", 2)
-
+        request_line_parts = lines[0].split(" ", 2)
+        request.method = request_line_parts[0]
+        request.path = request_line_parts[1]
+        request.version = request_line_parts[2]
         # PULL REQUEST HEADERS
-        headers = {}
         for line in lines[1:]:
             if not line:
                 continue
             key, value = line.split(":", 1)
-            headers[key.strip()] = value.strip()
-
+            request.headers[key.strip()] = value.strip()
         # PULL REQUEST BODY
-        body = b""
-        content_length = int(headers.get("Content-Length", 0))
+        content_length = int(request.headers.get("Content-Length", 0))
         if content_length:
-            body = await reader.readexactly(content_length)
+            request.body = await reader.readexactly(content_length)
+        return request
 
-        return method, path, version, headers, body
-
-    def _get_handler(self, request_method: str, request_path: str) -> tuple[Callable | None, dict]:
-        for (route_method, route_path) in self.routes:
-            if route_method != request_method:
-                continue
-            if len(route_path.split("/")) != len(request_path.split("/")):
-                continue
-            kwargs = {}
-            for route_part, request_part in zip(route_path.split("/"), request_path.split("/")):
-                if route_part == request_part:
-                    continue
-                if route_part.startswith("{") and route_part.endswith("}"):
-                    kwargs[route_part.strip("{}")] = request_part
-                    continue
+    def _get_file_response(self, path: str) -> Response:
+        response = Response()
+        # SET FILE PATH BASED ON REQUEST PATH
+        for prefix, directory in self.file_mounts.items():
+            if path.startswith(prefix):
+                file_path = directory / path.removeprefix(prefix)
                 break
+        # CHECK FILE PATH EXISTS
+        if not file_path.exists() or not file_path.is_file():
+            response.status = "404 Not Found"
+            response.content_type = "text/plain"
+            response.body = b"404 Not Found"
+            return response
+        # READ STATIC FILE
+        response.body = file_path.read_bytes()
+        # SET CONTENT TYPE
+        if file_path.suffix == ".css":
+            response.content_type = "text/css"
+        elif file_path.suffix == ".svg":
+            response.content_type = "image/svg+xml"
+        elif file_path.suffix == ".png":
+            response.content_type = "image/png"
+        elif file_path.suffix in (".jpg", ".jpeg"):
+            response.content_type = "image/jpeg"
+        else:
+            response.content_type = "application/octet-stream"
+        # OK RETURN
+        response.status = "200 OK"
+        return response
+
+    async def _get_route_response(self, request: Request) -> Response:
+        response = Response()
+        for (method, route) in self.routes:
+            if method != request.method:
+                continue
+            route_parts = route.split("/")
+            request_parts = request.path.split("/")
+            if len(route_parts) != len(request_parts):
+                continue
+
+            kwargs = {}
+            kwargs["request"] = request
+            for part in zip(route_parts, request_parts):
+                if part[0].startswith("{") and part[0].endswith("}"):
+                    kwargs[part[0].strip("{}")] = part[1]
+                elif part[0] != part[1]:
+                    break
             else:
-                handler = self.routes[(route_method, route_path)]
-                return handler, kwargs
-        return None, {}
+                handler = self.routes[(method, route)]
+                try:
+                    result = await handler(**kwargs)
+                    response.status = "200 OK"
+                    response.content_type = "text/html"
+                    response.body = result.encode()
+                    return response
+                except Exception:
+                    self.logger.exception(f"Handler {handler.__name__} failed")
+                    response.status = "500 Internal Server Error"
+                    response.content_type = "text/plain"
+                    response.body = b"500 Internal Server Error"
+                    return response
+
+        response.status = "404 Not Found"
+        response.content_type = "text/plain"
+        response.body = b"404 Not Found"
+        return response
 
     async def create_server(self, host: str, port: int):
         return await asyncio.start_server(self.handle_client, host, port)

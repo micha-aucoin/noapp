@@ -7,24 +7,10 @@ class TestResponse:
         self.body = body
 
 class TestClient:
-    def __init__(self, app):
-        self.app = app
-        self.server = None
-        self.host = None
-        self.port = None
-
-    async def start(self):
-        self.server = await self.app.create_server(
-            host='127.0.0.1',
-            port=0,
-        )
-        address = self.server.sockets[0].getsockname()
-        self.host = address[0]
-        self.port = address[1]
-
-    async def close(self):
-        self.server.close()
-        await self.server.wait_closed()
+    def __init__(self, server):
+        self.server = server
+        self.host = self.server.sockets[0].getsockname()[0]
+        self.port = self.server.sockets[0].getsockname()[1]
 
     async def get(self, path: str):
         reader, writer = await asyncio.open_connection(

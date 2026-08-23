@@ -7,17 +7,20 @@ from test_client import TestClient
 class TestApp(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.app = App()
-        self.client = TestClient(self.app)
-        await self.client.start()
+        self.server = await self.app.create_server(
+            host='127.0.0.1',
+            port=0,
+        )
+        self.client = TestClient(server=self.server)
 
     async def asyncTearDown(self):
-        await self.client.close()
+        self.server.close()
+        await self.server.wait_closed()
 
     async def test_get_root(self):
         @self.app.get('/')
-        async def index():
+        async def index(request):
             return "<h1>Hello</h1>"
-
         response = await self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.body, b"<h1>Hello</h1>")
@@ -29,62 +32,63 @@ class TestApp(unittest.IsolatedAsyncioTestCase):
 
     def test_url_for_root(self):
         @self.app.get('/')
-        async def index():
+        async def index(request):
             return "<h1>Hello</h1>"
-
         result = self.app.url_for("index")
         self.assertEqual(result, "/")
 
-    def test_get_handler_exact_route(self):
-        @self.app.get('/')
-        async def index():
-            return "<h1>Hello</h1>"
-
-        handler, kwargs = self.app._get_handler("GET", "/")
-        self.assertIsNotNone(handler)
-        self.assertEqual(handler.__name__, "index")
-        self.assertEqual(kwargs, {})
-
-    def test_get_handler_wrong_path_returns_none(self):
-        handler, kwargs = self.app._get_handler("GET", "/users/12")
-        self.assertIsNone(handler)
-        self.assertEqual(kwargs, {})
-
-    def test_get_handler_missing_segment_returns_none(self):
+    def test_url_for_with_path_parameter(self):
         @self.app.get("/posts/{post_id}")
-        async def post_page(post_id):
+        async def post_page(request, post_id):
             return post_id
-
-        handler, kwargs = self.app._get_handler("GET", "/posts")
-        self.assertIsNone(handler)
-        self.assertEqual(kwargs, {})
-
-    def test_get_handler_extra_segment_returns_none(self):
-        @self.app.get("/posts/{post_id}")
-        async def post_page(post_id):
-            return post_id
-
-        handler, kwargs = self.app._get_handler("GET", "/posts/12/comments")
-        self.assertIsNone(handler)
-        self.assertEqual(kwargs, {})
+        result = self.app.url_for("post_page", post_id=12)
+        self.assertEqual(result, "/posts/12")
 
     async def test_path_parameter_available_on_request(self):
         @self.app.get("/posts/{post_id}")
-        async def post_page(post_id):
+        async def post_page(request, post_id):
             return post_id
-
         response = await self.client.get("/posts/12")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.body, b"12")
 
     async def test_route_with_multiple_path_parameters(self):
         @self.app.get("/users/{user_id}/posts/{post_id}")
-        async def get_post(user_id, post_id):
+        async def get_post(request, user_id, post_id):
             return f"{user_id}:{post_id}"
-
         response = await self.client.get("/users/7/posts/12")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.body, b"7:12")
+
+    async def test_request_object_passed_to_handler(self):
+        @self.app.get("/hello")
+        async def hello(request):
+            return request.path
+        response = await self.client.get("/hello")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.body, b"/hello")
+
+    async def test_request_method_available(self):
+        @self.app.get("/hello")
+        async def hello(request):
+            return request.method
+        response = await self.client.get("/hello")
+        self.assertEqual(response.body, b"GET")
+
+    async def test_request_headers_available(self):
+        @self.app.get("/hello")
+        async def hello(request):
+            return request.headers["Host"]
+        response = await self.client.get("/hello")
+        self.assertEqual(response.body, b"127.0.0.1")
+
+    async def test_request_with_path_parameter(self):
+        @self.app.get("/posts/{post_id}")
+        async def post_page(request, post_id):
+            return f"{request.path}:{post_id}"
+        response = await self.client.get("/posts/12")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.body, b"/posts/12:12")
 
 if __name__ == "__main__":
     unittest.main()
