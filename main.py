@@ -3,57 +3,19 @@
 import time
 import logging
 from pathlib import Path
-from noapp import App, Template
 from dataclasses import dataclass
 from datetime import datetime
 
-@dataclass
-class Author:
-    id: int
-    username: str
-    image_path: str
+from noapp import App, Template
+from db.base import Database
 
-@dataclass
-class Post:
-    id: int
-    author: Author
-    title: str
-    content: str
-    date_posted: datetime
-
-authors = [
-    Author(id=1, username="John Doe", image_path="/static/profile_pic/defult.jpg"),
-    Author(id=2, username="Jane Doe", image_path="/static/profile_pic/defult.jpg"),
-]
-
-posts = [
-    Post(
-        id=1,
-        author=authors[0],
-        title="Post 1",
-        content="This is the content of my first post.",
-        date_posted=datetime(1999, 12, 31),
-    ),
-    Post(
-        id=2,
-        author=authors[1],
-        title="Post 2",
-        content="This is the content of my second post.",
-        date_posted=datetime(2000, 1, 1),
-    ),
-    Post(
-        id=3,
-        author=authors[0],
-        title="Post 3",
-        content="This is the content of my third post.",
-        date_posted=datetime(2000, 1, 2),
-    ),
-]
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
+
+db = Database()
 
 BASE_DIR = Path(__file__).parent
 template = Template(directory=(BASE_DIR / "templates"))
@@ -70,6 +32,7 @@ async def index(request):
 
 @app.get("/")
 async def home(request):
+    posts = db.get_posts()
     return template.response(
         "home.html",
         title="what up!",
