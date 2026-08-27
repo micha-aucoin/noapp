@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from .base import Database
+from base import Database
 
 
 db = Database()

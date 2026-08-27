@@ -1,8 +1,9 @@
 import asyncio
 import logging
 
-from typing import Callable
+from pprint import pformat
 from pathlib import Path
+from typing import Callable
 
 BASE_DIR = Path(__file__).parent.parent
 
@@ -14,11 +15,27 @@ class Request:
         self.headers = {}
         self.body = b""
 
+    def html(self) -> str:
+        return f"<pre>{pformat(self.__dict__)}</pre>"
+
+    def form(self) -> dict:
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.startswith("application/x-www-form-urlencoded"):
+            return {}
+        form_data = {}
+        for item in self.body.decode().split("&"):
+            key, value = item.split("=", 1)
+            value = value.replace("+", " ")
+            form_data[key] = value
+        return form_data
+
+
 class Response:
     def __init__(self):
         self.status = ""
         self.content_type = ""
         self.body = b""
+
 
 class App:
     def __init__(self):
@@ -28,23 +45,29 @@ class App:
         self.logger = logging.getLogger(__name__)
 
     def get(self, path: str):
+        return self._add_route("GET", path)
+
+    def post(self, path: str):
+        return self._add_route("POST", path)
+
+    def _add_route(self, method: str, path: str):
         def decorator(func):
-            if ("GET", path) in self.routes:
-                raise ValueError(f"Route already registered: GET {path}")
+            if (method, path) in self.routes:
+                raise ValueError(f"Route already registered: {method} {path}")
+
             if func.__name__ in self.route_names:
                 raise ValueError(f"Route name already registered: {func.__name__}")
-            self.routes[("GET", path)] = func
+
+            self.routes[(method, path)] = func
             self.route_names[func.__name__] = path
-            self.logger.debug("Registered route: GET %s", path)
+            self.logger.debug("Registered route: %s %s", method, path)
             return func
         return decorator
 
     def url_for(self, name: str, **kwargs):
         path = self.route_names[name]
+        self.logger.info("path: %s, kwargs: %s", path, kwargs)
         return path.format(**kwargs)
-
-    def mount(self, path: str, directory: Path):
-        self.file_mounts[path] = directory
 
     async def handle_client(self, reader, writer):
         address = writer.get_extra_info("peername")
@@ -77,6 +100,7 @@ class App:
                 "Connection: close\r\n"
                 "\r\n"
             ).encode() + response.body
+
             writer.write(response_message)
             await writer.drain()
 
@@ -125,6 +149,8 @@ class App:
         # SET CONTENT TYPE
         if file_path.suffix == ".css":
             response.content_type = "text/css"
+        elif file_path.suffix == ".js":
+            response.content_type = "application/javascript"
         elif file_path.suffix == ".svg":
             response.content_type = "image/svg+xml"
         elif file_path.suffix == ".png":

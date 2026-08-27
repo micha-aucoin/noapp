@@ -20,7 +20,7 @@ class Database:
             connection.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL,
+                    username TEXT NOT NULL UNIQUE,
                     image_path TEXT NOT NULL
                 )
             """)
@@ -35,7 +35,7 @@ class Database:
                 )
             """)
 
-    def get_user(self, user_id: id) -> dict:
+    def get_user(self, user_id: id) -> None | User:
         with self.connect() as connection:
             row = connection.execute(
                 "SELECT * FROM users WHERE id = ?",
@@ -43,19 +43,46 @@ class Database:
             ).fetchone()
         if row is None:
             return None
-        return row
+        return User(
+            id=row["id"],
+            username=row["username"],
+            image_path=row["image_path"],
+        )
 
-    def get_post(self, post_id: id) -> dict:
+    def get_post(self, post_id: id) -> None | Post:
         with self.connect() as connection:
             row = connection.execute(
-                "SELECT * FROM posts WHERE id = ?",
+                """
+                SELECT
+                    posts.id,
+                    posts.title,
+                    posts.content,
+                    posts.date_posted,
+                    users.id AS user_id,
+                    users.username,
+                    users.image_path
+                FROM posts
+                JOIN users
+                    ON users.id = posts.author_id
+                WHERE posts.id = ?
+                """,
                 (post_id,),
             ).fetchone()
         if row is None:
             return None
-        return row
+        return Post(
+            id=row["id"],
+            author=User(
+                id=row["user_id"],
+                username=row["username"],
+                image_path=row["image_path"],
+            ),
+            title=row["title"],
+            content=row["content"],
+            date_posted=datetime.fromisoformat(row["date_posted"]),
+        )
 
-    def insert_user(self, username: str, image_path: str) -> None:
+    def insert_user(self, username: str, image_path: str) -> int:
         with self.connect() as connection:
             cursor = connection.execute(
                 """
@@ -72,7 +99,7 @@ class Database:
         title: str,
         content: str,
         date_posted: str,
-    ) -> None:
+    ) -> int:
         with self.connect() as connection:
             cursor = connection.execute(
                 """
@@ -121,3 +148,11 @@ class Database:
             )
             posts.append(post)
         return posts
+
+    def username_exists(self, username: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+        return row is not None

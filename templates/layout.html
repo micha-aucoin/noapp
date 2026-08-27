@@ -10,6 +10,7 @@
 		<link rel="stylesheet" href="/static/css/general.css">
 		<link rel="stylesheet" href="/static/css/sidebar.css">
 		<link rel="stylesheet" href="/static/css/posts.css">
+		<link rel="stylesheet" href="/static/css/dialogs.css">
 
 	</head>
 	<body>
@@ -17,26 +18,26 @@
 		<!-- HEADER -->
 		<div class="header">
 			<div class="left-section">
-				<button class="menu-button">
-					<img class="menu-icon" src="/static/icons/stacks_dark.svg">
-				</button>
-				<a href="{{ url_for('home') }}"></a>
+				<a href="{{ url_for('home') }}"><b>HOME</b></a>
 			</div>
 			<div class="middle-section">
 				<input class="search-bar" type="text" placeholder="Search">
 			</div>
 			<div class="right-section">
 				<span></span>
-				<button class="sign-in-button">
-					<img class="sign-in-icon" src="/static/icons/elderly_dark.svg">
-					<span>Sign In</span>
+				<button id="create-user-open" class="sign-in-button" type="button">
+					<span>Create User</span>
 				</button>
-				<a href="{{ url_for('home') }}"></a>
+				<span></span>
 			</div>
 		</div>
 
 		<!-- SIDEBAR -->
 		<nav class="sidebar">
+			<div class="sidebar-link">
+				<img src="/static/icons/ink_pen_dark.svg">
+				<div>Post</div>
+			</div>
 			<div class="sidebar-link">
 				<img src="/static/icons/folder_dark.svg">
 				<div>Folders</div>
@@ -57,5 +58,19 @@
 		{% endblock content %}
 		</main>
 
+		<dialog id="create-user">
+			<form id="create-user-form" method="POST" action="/create_user">
+				<input name="username" type="text" placeholder="Username">
+				<button type="submit">
+					Create User
+				</button>
+				<button id="create-user-cancel" type="button">
+					Cancel
+				</button>
+				<p id="create-user-message"></p>
+			</form>
+		</dialog>
+
+		<script src="/static/js/create_user.js"></script>
 	</body>
 </html>

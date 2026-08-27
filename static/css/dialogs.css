@@ -1,0 +1,17 @@
+#create-user {
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+
+	width: 400px;
+    min-height: 100px;
+
+    position: relative;
+    top: -300px;
+}
+
+#create-user-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
