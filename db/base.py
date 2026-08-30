@@ -97,6 +97,27 @@ class CRUD:
         return [cls.from_row(row) for row in rows]
 
     @classmethod
+    def filter(cls, **kwargs):
+        cls._check_config()
+        if not kwargs:
+            return cls.all()
+        conditions = " AND ".join(
+            f"{column} = ?" for column in kwargs
+        )
+        sql = (
+            f"SELECT * FROM {cls.table_name} "
+            f"WHERE {conditions}"
+        )
+        parameters = tuple(kwargs.values())
+        with cls.db.session() as connection:
+            rows = connection.execute(sql, parameters).fetchall()
+        return [cls.from_row(row) for row in rows]
+
+    @classmethod
     def from_row(cls, row):
+        raise NotImplementedError
+
+    @classmethod
+    def create_table(cls):
         raise NotImplementedError
 

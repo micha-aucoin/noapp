@@ -18,16 +18,6 @@ class User(CRUD):
         )
 
     @classmethod
-    def username_exists(cls, username):
-        cls._check_config()
-        with cls.db.session() as connection:
-            row = connection.execute(
-                f"SELECT 1 FROM {cls.table_name} WHERE username = ?",
-                (username,),
-            ).fetchone()
-        return row is not None
-
-    @classmethod
     def create_table(cls):
         cls._check_config()
         with cls.db.session() as connection:

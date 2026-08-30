@@ -54,7 +54,7 @@ async def create_user(request):
     username = request.form().get("username", "").strip()
     if not username:
         return response.text("Username is required")
-    if User.username_exists(username):
+    if User.filter(username=username):
         return response.text(f"Username {username} already exists")
     user = User.create(
         username=username,
