@@ -34,7 +34,26 @@ class Response:
     def __init__(self):
         self.status = ""
         self.content_type = ""
+        self.headers = {}
         self.body = b""
+
+    def text(self, body):
+        self.status = "200 OK"
+        self.content_type = "text/plain"
+        self.body = body.encode()
+        return self
+
+    def html(self, body):
+        self.status = "200 OK"
+        self.content_type = "text/html"
+        self.body = body.encode()
+        return self
+
+    def redirect(self, location):
+        self.status = "303 See Other"
+        self.headers["Location"] = location
+        self.body = b""
+        return self
 
 
 class App:
@@ -93,10 +112,14 @@ class App:
                 len(response.body),
             )
 
+            headers = ""
+            for key, value in response.headers.items():
+                headers += f"{key}: {value}\r\n"
             response_message = (
                 f"HTTP/1.1 {response.status}\r\n"
                 f"Content-Type: {response.content_type}\r\n"
                 f"Content-Length: {len(response.body)}\r\n"
+                f"{headers}"
                 "Connection: close\r\n"
                 "\r\n"
             ).encode() + response.body
@@ -184,10 +207,11 @@ class App:
                 handler = self.routes[(method, route)]
                 try:
                     result = await handler(**kwargs)
-                    response.status = "200 OK"
-                    response.content_type = "text/html"
-                    response.body = result.encode()
-                    return response
+                    if not isinstance(result, Response):
+                        raise TypeError(
+                            f"Handler {handler.__name__} must return a Response"
+                        )
+                    return result
                 except Exception:
                     self.logger.exception(f"Handler {handler.__name__} failed")
                     response.status = "500 Internal Server Error"

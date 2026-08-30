@@ -1,32 +1,44 @@
 #!/usr/bin/env python3
 
-from base import Database
+from datetime import datetime
+from pathlib import Path
+
+from db.base import Database
+from db.models import User, Post
 
 
-db = Database()
-db.create_tables()
+BASE_DIR = Path(__file__).parent.parent
 
-john_id = db.insert_user(
+db = Database(BASE_DIR / "new.db")
+
+User.db = db
+Post.db = db
+
+User.create_table()
+Post.create_table()
+
+
+john = User.create(
     username="John Doe",
-    image_path="/static/profile_pic/defult.jpg",
+    image_path="/static/profile_pic/default.jpg",
 )
 
-jane_id = db.insert_user(
+jane = User.create(
     username="Jane Doe",
-    image_path="/static/profile_pic/defult.jpg",
+    image_path="/static/profile_pic/default.jpg",
 )
 
-db.insert_post(
-    author_id=john_id,
+Post.create(
+    author_id=john.id,
     title="Post 1",
     content="This is the content of my first post.",
-    date_posted="1999-12-31T00:00:00",
+    date_posted=datetime(1999, 12, 31).isoformat(),
 )
 
-db.insert_post(
-    author_id=jane_id,
+Post.create(
+    author_id=jane.id,
     title="Post 2",
     content="This is the content of my second post.",
-    date_posted="2000-01-01T00:00:00",
+    date_posted=datetime(2000, 1, 1).isoformat(),
 )
 

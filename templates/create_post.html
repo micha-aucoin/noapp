@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1>Create Post</h1>
+
+<form method="post" action="/posts/create">
+    <label for="author_id">Author</label>
+    <input
+        id="author_id"
+        name="author_id"
+        type="number"
+    >
+
+    <label for="title">Title</label>
+    <input
+        id="title"
+        name="title"
+        type="text"
+    >
+
+    <label for="content">Content</label>
+    <textarea
+        id="content"
+        name="content"
+    ></textarea>
+
+    <button type="submit">Create Post</button>
+</form>
+{% endblock %}
